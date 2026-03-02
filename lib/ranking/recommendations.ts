@@ -60,6 +60,9 @@ export function rankCoursesDeterministically(
   input: RecommendationRequest,
   courses: CourseRecord[]
 ): RecommendationOutput {
+  const dateFrom = input.dateFrom || input.date || "";
+  const dateTo = input.dateTo || "";
+
   const ranked: RankedCourse[] = courses
     .map((course) => {
       let score = 0;
@@ -88,8 +91,13 @@ export function rankCoursesDeterministically(
         reasons.push(`Within ${input.distanceMiles} miles`);
       }
 
-      if (input.date && course.start_date && course.start_date >= input.date) {
-        score += 10;
+      if (course.start_date) {
+        if (dateFrom && course.start_date >= dateFrom) {
+          score += 8;
+        }
+        if (dateTo && course.start_date <= dateTo) {
+          score += 8;
+        }
       }
 
       if (dateIsUpcomingWeekend(course.start_date)) {
@@ -126,7 +134,7 @@ export function rankCoursesDeterministically(
   const missingInputs: string[] = [];
   if (!input.location) missingInputs.push("location");
   if (!input.weaponSystem) missingInputs.push("weaponSystem");
-  if (!input.date) missingInputs.push("date");
+  if (!dateFrom && !dateTo) missingInputs.push("dateRange");
   if (!input.distanceMiles) missingInputs.push("distanceMiles");
   if (!input.skillLevel) missingInputs.push("skillLevel");
   if (!input.gearConstraints) missingInputs.push("gearConstraints");

@@ -24,7 +24,8 @@ const defaultResponse: RecommendationResponse = {
 export function DiscoveryClient() {
   const [location, setLocation] = useState("");
   const [weaponSystem, setWeaponSystem] = useState("Long Range / Precision Rifle");
-  const [date, setDate] = useState("");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
   const [distanceMiles, setDistanceMiles] = useState(50);
   const [skillLevel, setSkillLevel] = useState("Intermediate");
   const [gearConstraints, setGearConstraints] = useState("");
@@ -53,7 +54,8 @@ export function DiscoveryClient() {
         body: JSON.stringify({
           location,
           weaponSystem,
-          date,
+          dateFrom,
+          dateTo,
           distanceMiles,
           skillLevel,
           gearConstraints
@@ -99,8 +101,13 @@ export function DiscoveryClient() {
           </label>
 
           <label>
-            Date
-            <input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+            Start Date
+            <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} />
+          </label>
+
+          <label>
+            End Date
+            <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
           </label>
 
           <label>

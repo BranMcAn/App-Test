@@ -15,6 +15,8 @@ export const RecommendationRequestSchema = z.object({
   location: z.string().trim().optional().default(""),
   weaponSystem: z.string().trim().optional().default(""),
   date: z.string().trim().optional().default(""),
+  dateFrom: z.string().trim().optional().default(""),
+  dateTo: z.string().trim().optional().default(""),
   distanceMiles: z.coerce.number().int().positive().optional(),
   skillLevel: z.string().trim().optional().default(""),
   gearConstraints: z.string().trim().optional().default("")

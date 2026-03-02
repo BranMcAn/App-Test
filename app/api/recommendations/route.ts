@@ -12,7 +12,7 @@ import { isAiRecommendationsEnabled, isWebDiscoveryEnabled } from "@/lib/feature
 
 export const dynamic = "force-dynamic";
 
-async function loadCourses(location: string, date: string): Promise<CourseRecord[]> {
+async function loadCourses(location: string, dateFrom: string, dateTo: string): Promise<CourseRecord[]> {
   const supabase = createPublicSupabaseServerClient();
   if (!supabase) {
     return [];
@@ -27,8 +27,12 @@ async function loadCourses(location: string, date: string): Promise<CourseRecord
     query = query.ilike("location_label", `%${location}%`);
   }
 
-  if (date) {
-    query = query.gte("start_date", date);
+  if (dateFrom) {
+    query = query.gte("start_date", dateFrom);
+  }
+
+  if (dateTo) {
+    query = query.lte("start_date", dateTo);
   }
 
   const { data, error } = await query;
@@ -101,7 +105,9 @@ export async function POST(req: Request) {
   }
 
   const input = parsedInput.data;
-  const dbCourses = await loadCourses(input.location, input.date);
+  const dateFrom = input.dateFrom || input.date || "";
+  const dateTo = input.dateTo || "";
+  const dbCourses = await loadCourses(input.location, dateFrom, dateTo);
   const webCourses =
     dbCourses.length === 0 && isAiRecommendationsEnabled() && isWebDiscoveryEnabled()
       ? await requestWebDiscoveredCourses(input)
