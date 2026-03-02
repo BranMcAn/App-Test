@@ -100,7 +100,16 @@ export async function POST(req: Request) {
         disclaimer:
           "Discovery assistance only. This platform does not provide firearms instruction, tactical guidance, legal advice, or weapon modification advice."
       },
-      { status: 400 }
+      {
+        status: 400,
+        headers: {
+          "x-debug-reason": "invalid_request_payload",
+          "x-debug-source": "none",
+          "x-debug-db-count": "0",
+          "x-debug-web-count": "0",
+          "x-debug-candidate-count": "0"
+        }
+      }
     );
   }
 
@@ -119,7 +128,15 @@ export async function POST(req: Request) {
 
   const cached = await getCachedRecommendation(cacheKey);
   if (cached) {
-    return NextResponse.json(cached);
+    return NextResponse.json(cached, {
+      headers: {
+        "x-debug-reason": "cache_hit",
+        "x-debug-source": dbCourses.length > 0 ? "supabase" : webCourses.length > 0 ? "web_discovery" : "none",
+        "x-debug-db-count": String(dbCourses.length),
+        "x-debug-web-count": String(webCourses.length),
+        "x-debug-candidate-count": String(courses.length)
+      }
+    });
   }
 
   const ai = isAiRecommendationsEnabled()
@@ -128,5 +145,18 @@ export async function POST(req: Request) {
   const finalResult = RecommendationSchema.parse(ai ?? deterministic);
 
   await setCachedRecommendation(cacheKey, finalResult);
-  return NextResponse.json(finalResult);
+  return NextResponse.json(finalResult, {
+    headers: {
+      "x-debug-reason":
+        courses.length === 0
+          ? "no_candidates_after_db_and_web_lookup"
+          : ai
+            ? "ai_ranked_candidates"
+            : "deterministic_ranking_used",
+      "x-debug-source": dbCourses.length > 0 ? "supabase" : webCourses.length > 0 ? "web_discovery" : "none",
+      "x-debug-db-count": String(dbCourses.length),
+      "x-debug-web-count": String(webCourses.length),
+      "x-debug-candidate-count": String(courses.length)
+    }
+  });
 }

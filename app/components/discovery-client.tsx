@@ -11,6 +11,14 @@ type RecommendationResponse = {
   disclaimer: string;
 };
 
+type DebugInfo = {
+  reason: string;
+  source: string;
+  dbCount: string;
+  webCount: string;
+  candidateCount: string;
+};
+
 const defaultResponse: RecommendationResponse = {
   suggested_course_ids: [],
   ranking_reasoning: [],
@@ -33,6 +41,7 @@ export function DiscoveryClient() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<RecommendationResponse | null>(null);
+  const [debug, setDebug] = useState<DebugInfo | null>(null);
 
   const state = useMemo(() => {
     if (loading) return "loading";
@@ -63,6 +72,13 @@ export function DiscoveryClient() {
       });
 
       const data = (await response.json().catch(() => null)) as RecommendationResponse | null;
+      setDebug({
+        reason: response.headers.get("x-debug-reason") ?? "unavailable",
+        source: response.headers.get("x-debug-source") ?? "unknown",
+        dbCount: response.headers.get("x-debug-db-count") ?? "0",
+        webCount: response.headers.get("x-debug-web-count") ?? "0",
+        candidateCount: response.headers.get("x-debug-candidate-count") ?? "0"
+      });
       if (!data) {
         setResult(defaultResponse);
         setError("No response payload received.");
@@ -75,6 +91,13 @@ export function DiscoveryClient() {
       }
     } catch {
       setResult(defaultResponse);
+      setDebug({
+        reason: "request_exception",
+        source: "unknown",
+        dbCount: "0",
+        webCount: "0",
+        candidateCount: "0"
+      });
       setError("Recommendations are temporarily unavailable.");
     } finally {
       setLoading(false);
@@ -170,6 +193,18 @@ export function DiscoveryClient() {
           <p>Confidence: {result.confidence_level}</p>
           <p>Missing Inputs: {result.missing_inputs.join(", ") || "None"}</p>
           <p>{result.disclaimer}</p>
+        </div>
+      ) : null}
+
+      {debug ? (
+        <div className="state">
+          <strong>Debug Reason</strong>
+          <p style={{ margin: "0.5rem 0 0 0" }}>Reason: {debug.reason}</p>
+          <p style={{ margin: "0.25rem 0 0 0" }}>Source: {debug.source}</p>
+          <p style={{ margin: "0.25rem 0 0 0" }}>
+            DB Candidates: {debug.dbCount} | Web Candidates: {debug.webCount} | Total Candidates:{" "}
+            {debug.candidateCount}
+          </p>
         </div>
       ) : null}
     </section>
