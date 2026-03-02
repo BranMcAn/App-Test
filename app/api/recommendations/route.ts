@@ -7,8 +7,8 @@ import {
   type RecommendationOutput
 } from "@/lib/ai/schema";
 import { rankCoursesDeterministically, recommendationCacheKey } from "@/lib/ranking/recommendations";
-import { requestAIRecommendations } from "@/lib/ai/openai";
-import { isAiRecommendationsEnabled } from "@/lib/features";
+import { requestAIRecommendations, requestWebDiscoveredCourses } from "@/lib/ai/openai";
+import { isAiRecommendationsEnabled, isWebDiscoveryEnabled } from "@/lib/features";
 
 export const dynamic = "force-dynamic";
 
@@ -101,7 +101,13 @@ export async function POST(req: Request) {
   }
 
   const input = parsedInput.data;
-  const courses = await loadCourses(input.location, input.date);
+  const dbCourses = await loadCourses(input.location, input.date);
+  const webCourses =
+    dbCourses.length === 0 && isAiRecommendationsEnabled() && isWebDiscoveryEnabled()
+      ? await requestWebDiscoveredCourses(input)
+      : [];
+  const courses = dbCourses.length > 0 ? dbCourses : webCourses;
+
   const deterministic = rankCoursesDeterministically(input, courses);
   const cacheKey = recommendationCacheKey(input, courses.map((c) => c.id));
 

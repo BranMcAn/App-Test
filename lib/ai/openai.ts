@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { createHash } from "crypto";
 import { getServerEnv } from "@/lib/env";
 import {
   RecommendationSchema,
@@ -18,6 +19,71 @@ const OpenAIResponseSchema = z.object({
     )
     .min(1)
 });
+
+const WebDiscoverySchema = z.object({
+  courses: z.array(
+    z.object({
+      title: z.string().min(1),
+      provider: z.string().optional(),
+      category: z.string().optional(),
+      weapon_system: z.string().optional(),
+      location_label: z.string().optional(),
+      start_date: z.string().optional(),
+      distance_miles: z.number().int().nonnegative().optional(),
+      duration_days: z.number().int().positive().optional(),
+      skill_level: z.string().optional(),
+      gear_requirements: z.string().optional(),
+      source_url: z.string().url().optional()
+    })
+  )
+});
+
+function toSyntheticWebId(value: string): string {
+  return `web-${createHash("sha256").update(value).digest("hex").slice(0, 16)}`;
+}
+
+function extractResponseText(payload: unknown): string | null {
+  if (!payload || typeof payload !== "object") {
+    return null;
+  }
+
+  const maybe = payload as { output_text?: unknown; output?: unknown };
+  if (typeof maybe.output_text === "string" && maybe.output_text.trim()) {
+    return maybe.output_text;
+  }
+
+  if (!Array.isArray(maybe.output)) {
+    return null;
+  }
+
+  for (const item of maybe.output) {
+    if (!item || typeof item !== "object") continue;
+    const content = (item as { content?: unknown }).content;
+    if (!Array.isArray(content)) continue;
+    for (const block of content) {
+      if (!block || typeof block !== "object") continue;
+      const text = (block as { text?: unknown }).text;
+      if (typeof text === "string" && text.trim()) {
+        return text;
+      }
+    }
+  }
+
+  return null;
+}
+
+function buildWebSearchPrompt(input: RecommendationRequest): string {
+  return [
+    "Find civilian firearms training course listings on the public web.",
+    "Discovery only. Do not provide firearms instruction, tactics, legal advice, or modifications.",
+    "Prioritize official provider pages with registration links.",
+    "Treat Long Range / Precision Rifle as distinct from generic rifle.",
+    "Return strict JSON only with this shape:",
+    "{\"courses\":[{\"title\":\"\",\"provider\":\"\",\"category\":\"\",\"weapon_system\":\"\",\"location_label\":\"\",\"start_date\":\"YYYY-MM-DD or empty\",\"distance_miles\":0,\"duration_days\":1,\"skill_level\":\"\",\"gear_requirements\":\"\",\"source_url\":\"https://...\"}]}",
+    "Input filters:",
+    JSON.stringify(input)
+  ].join("\n");
+}
 
 function buildPrompt(input: RecommendationRequest, courses: CourseRecord[], fallback: RecommendationOutput): string {
   return [
@@ -99,6 +165,73 @@ export async function requestAIRecommendations(
     };
   } catch {
     return null;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+export async function requestWebDiscoveredCourses(input: RecommendationRequest): Promise<CourseRecord[]> {
+  const env = getServerEnv();
+  if (!env.OPENAI_API_KEY) {
+    return [];
+  }
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 6000);
+
+  try {
+    const response = await fetch("https://api.openai.com/v1/responses", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${env.OPENAI_API_KEY}`
+      },
+      body: JSON.stringify({
+        model: env.OPENAI_MODEL,
+        tools: [{ type: "web_search_preview" }],
+        input: [
+          {
+            role: "system",
+            content:
+              "You discover firearms training course listings for search relevance only. Never provide instructional or tactical guidance."
+          },
+          {
+            role: "user",
+            content: buildWebSearchPrompt(input)
+          }
+        ]
+      }),
+      signal: controller.signal
+    });
+
+    if (!response.ok) {
+      return [];
+    }
+
+    const raw = (await response.json()) as unknown;
+    const text = extractResponseText(raw);
+    if (!text) {
+      return [];
+    }
+
+    const parsed = WebDiscoverySchema.safeParse(JSON.parse(text));
+    if (!parsed.success) {
+      return [];
+    }
+
+    return parsed.data.courses.map((course, index) => ({
+      id: toSyntheticWebId(course.source_url ?? `${course.title}|${course.provider ?? ""}|${index}`),
+      title: course.title,
+      category: course.category ?? null,
+      weapon_system: course.weapon_system ?? null,
+      start_date: course.start_date ?? null,
+      distance_miles: course.distance_miles ?? null,
+      duration_days: course.duration_days ?? null,
+      skill_level: course.skill_level ?? null,
+      gear_requirements: course.gear_requirements ?? null
+    }));
+  } catch {
+    return [];
   } finally {
     clearTimeout(timeout);
   }

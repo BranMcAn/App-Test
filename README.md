@@ -36,3 +36,4 @@ No destructive migration operations are included.
 
 - `AI_RECOMMENDATIONS_ENABLED=true` enables OpenAI ranking.
 - Set `AI_RECOMMENDATIONS_ENABLED=false` to force deterministic ranking only.
+- `AI_WEB_DISCOVERY_ENABLED=true` enables OpenAI web search when database results are empty.

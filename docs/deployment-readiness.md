@@ -18,6 +18,7 @@
 4. `OPENAI_API_KEY`
 5. `OPENAI_MODEL` (optional; defaults to `gpt-4.1-mini`)
 6. `AI_RECOMMENDATIONS_ENABLED` (`true` or `false`)
+7. `AI_WEB_DISCOVERY_ENABLED` (`true` or `false`)
 
 ## Supabase migration steps
 
