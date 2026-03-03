@@ -133,7 +133,8 @@ function normalizeWebCourses(courses: z.infer<typeof WebDiscoverySchema>["course
     distance_miles: course.distance_miles ?? null,
     duration_days: course.duration_days ?? null,
     skill_level: course.skill_level ?? null,
-    gear_requirements: course.gear_requirements ?? null
+    gear_requirements: course.gear_requirements ?? null,
+    source_url: course.source_url ?? null
   }));
 }
 

@@ -98,6 +98,17 @@ async function setCachedRecommendation(cacheKey: string, recommendation: Recomme
   );
 }
 
+function withSuggestedCourseUrls(
+  recommendation: RecommendationOutput,
+  courses: CourseRecord[]
+): RecommendationOutput {
+  const lookup = new Map(courses.map((course) => [course.id, course.source_url ?? null]));
+  return {
+    ...recommendation,
+    suggested_course_ids: recommendation.suggested_course_ids.map((id) => lookup.get(id) || id)
+  };
+}
+
 export async function POST(req: Request) {
   const body = await req.json().catch(() => ({}));
   const parsedInput = RecommendationRequestSchema.safeParse(body);
@@ -141,7 +152,7 @@ export async function POST(req: Request) {
 
   const cached = await getCachedRecommendation(cacheKey);
   if (cached) {
-    return NextResponse.json(cached, {
+    return NextResponse.json(withSuggestedCourseUrls(cached, courses), {
       headers: {
         "x-debug-reason": "cache_hit",
         "x-debug-source": dbCourses.length > 0 ? "supabase" : webCourses.length > 0 ? "web_discovery" : "none",
@@ -156,9 +167,10 @@ export async function POST(req: Request) {
     ? await requestAIRecommendations(input, courses, deterministic)
     : null;
   const finalResult = RecommendationSchema.parse(ai ?? deterministic);
+  const finalResponse = withSuggestedCourseUrls(finalResult, courses);
 
   await setCachedRecommendation(cacheKey, finalResult);
-  return NextResponse.json(finalResult, {
+  return NextResponse.json(finalResponse, {
     headers: {
       "x-debug-reason":
         courses.length === 0

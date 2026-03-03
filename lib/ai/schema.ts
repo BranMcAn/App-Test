@@ -34,6 +34,7 @@ export type CourseRecord = {
   duration_days: number | null;
   skill_level: string | null;
   gear_requirements: string | null;
+  source_url?: string | null;
 };
 
 export const RecommendationDisclaimer =
