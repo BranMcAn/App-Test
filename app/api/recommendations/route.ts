@@ -66,12 +66,25 @@ async function getCachedRecommendation(cacheKey: string): Promise<Recommendation
   }
 
   const parsed = RecommendationSchema.safeParse(data.recommendation_json);
-  return parsed.success ? parsed.data : null;
+  if (!parsed.success) {
+    return null;
+  }
+
+  // Avoid serving stale empty responses repeatedly; force fresh discovery attempts.
+  if (parsed.data.suggested_course_ids.length === 0) {
+    return null;
+  }
+
+  return parsed.data;
 }
 
 async function setCachedRecommendation(cacheKey: string, recommendation: RecommendationOutput): Promise<void> {
   const supabase = createServiceRoleSupabaseClient();
   if (!supabase) {
+    return;
+  }
+
+  if (recommendation.suggested_course_ids.length === 0) {
     return;
   }
 
