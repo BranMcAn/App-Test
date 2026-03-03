@@ -31,12 +31,13 @@ const defaultResponse: RecommendationResponse = {
 
 export function DiscoveryClient() {
   const [location, setLocation] = useState("");
-  const [weaponSystem, setWeaponSystem] = useState("Long Range / Precision Rifle");
+  const [weaponSystem, setWeaponSystem] = useState("");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const [distanceMiles, setDistanceMiles] = useState(50);
-  const [skillLevel, setSkillLevel] = useState("Intermediate");
+  const [skillLevel, setSkillLevel] = useState("");
   const [gearConstraints, setGearConstraints] = useState("");
+  const [anyDates, setAnyDates] = useState(true);
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -63,8 +64,8 @@ export function DiscoveryClient() {
         body: JSON.stringify({
           location,
           weaponSystem,
-          dateFrom,
-          dateTo,
+          dateFrom: anyDates ? "" : dateFrom,
+          dateTo: anyDates ? "" : dateTo,
           distanceMiles,
           skillLevel,
           gearConstraints
@@ -116,6 +117,7 @@ export function DiscoveryClient() {
           <label>
             Weapon System
             <select value={weaponSystem} onChange={(e) => setWeaponSystem(e.target.value)}>
+              <option value="">Any Category</option>
               <option>Long Range / Precision Rifle</option>
               <option>Carbine Rifle</option>
               <option>Handgun</option>
@@ -125,12 +127,17 @@ export function DiscoveryClient() {
 
           <label>
             Start Date
-            <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} />
+            <input
+              type="date"
+              value={dateFrom}
+              disabled={anyDates}
+              onChange={(e) => setDateFrom(e.target.value)}
+            />
           </label>
 
           <label>
             End Date
-            <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
+            <input type="date" value={dateTo} disabled={anyDates} onChange={(e) => setDateTo(e.target.value)} />
           </label>
 
           <label>
@@ -146,6 +153,7 @@ export function DiscoveryClient() {
           <label>
             Skill Level
             <select value={skillLevel} onChange={(e) => setSkillLevel(e.target.value)}>
+              <option value="">Any Category</option>
               <option>Beginner</option>
               <option>Intermediate</option>
               <option>Advanced</option>
@@ -159,6 +167,24 @@ export function DiscoveryClient() {
               onChange={(e) => setGearConstraints(e.target.value)}
               placeholder="Example: Bolt-action only"
             />
+          </label>
+        </div>
+
+        <div style={{ marginTop: "0.75rem" }}>
+          <label style={{ display: "flex", alignItems: "center", gap: "0.5rem", fontWeight: 600 }}>
+            <input
+              type="checkbox"
+              checked={anyDates}
+              onChange={(e) => {
+                const checked = e.target.checked;
+                setAnyDates(checked);
+                if (checked) {
+                  setDateFrom("");
+                  setDateTo("");
+                }
+              }}
+            />
+            Any Dates
           </label>
         </div>
 
